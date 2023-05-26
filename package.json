@@ -8,7 +8,12 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "@types/jquery": "^3.5.16",
+    "@types/papaparse": "^5.3.7",
     "core-js": "^3.8.3",
+    "element-plus": "^2.3.5",
+    "jquery": "^3.7.0",
+    "papaparse": "^5.4.1",
     "vue": "^3.2.13",
     "vue-class-component": "^8.0.0-0",
     "vue-router": "^4.0.3",
