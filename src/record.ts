@@ -283,7 +283,6 @@ class EventRecord {
                 }
             }
 
-
             // Subtract the start time delay from the timestamp so we don't include the dead time (i.e., time between
             // page load and recording started) in our playback JSON log.
             // userEvent.timeStamp = new Date().getTime() - this.startTimeDelay;
