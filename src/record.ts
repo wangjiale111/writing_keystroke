@@ -1,40 +1,8 @@
-import $ from "jquery";
-import {ElMessageBox} from "element-plus";
-import Papa from "papaparse";
+import $ from 'jquery';
 
-export class DomEventRecord {
-
-    record!: EventRecord;
-
-
-    constructor() {
-        (window as any).playbackInProgress = false;
-        (window as any).recordInProgress = false;
-    }
-
-    /**
-     *
-     * @param progressCall 实时录制的回调函数，会把EventLog返回，
-     */
-    startRecord(progressCall:any) {
-        this.record = new EventRecord(progressCall);
-        this.record.start();
-    }
-
-    /**
-     * 停止录制并返回录制数据
-     * @returns 返回所有EventLog 数组
-     */
-    stopRecord(p: (log: any) => void) {
-        return this.record.stop();
-    }
-}
-
-class EventRecord {
+export default class EventRecord {
 
     userEventLog = [];
-    userViewModelLog: any[] = [];
-    ctrlKeyDown = false;
     index = 1;
     count = 1;
     interval = 10; // 时间间隔为 10 毫秒
@@ -65,58 +33,6 @@ class EventRecord {
             }
         }, true);
 
-        // document.addEventListener('click', (event) => { this.logEvent(event); }, true);
-        // document.addEventListener('mousedown', (event) => { this.logEvent(event); }, true);
-        // document.addEventListener('mousemove', (event) => { this.logEvent(event); }, true);
-        // document.addEventListener('mouseup', (event) => {
-        //
-        //     this.logEvent(event);
-        //
-        //     // if the user has selected text, then we want to record an extra 'contains' event. on playback, this is used
-        //     // to verify that the selected text is contained within the target element
-        //     const selectedText = this._getSelectionText();
-        //     if (selectedText.length > 1) {
-        //         this.logEvent({ 'target':document.activeElement, 'type':'contains', 'text':selectedText, 'timeStamp':event.timeStamp });
-        //     }
-        // }, true);
-        // 添加监听器
-        // setInterval(() => {
-        //     if (this.isPaused) {
-        //         this.userEventLog.push(
-        //             // {
-        //             //     'timeStamp':
-        //             //     'inputType': 'pause',
-        //             //     'index': this.index++
-        //             // }
-        //         {
-        //             "selector": "",
-        //             "isTrusted": true,
-        //             "value": this.userEventLog.length ? this.userEventLog[this.userEventLog.length - 1]['value'] : "",
-        //             "data": "",
-        //             "isComposing": false,
-        //             "inputType": "pause",
-        //             "detail": 0,
-        //             "which": 0,
-        //             "type": "input",
-        //             "eventPhase": 1,
-        //             "bubbles": true,
-        //             "cancelable": false,
-        //             "defaultPrevented": false,
-        //             "composed": true,
-        //             "timeStamp":  new Date().getTime() - this.startTimeDelay,
-        //             "returnValue": true,
-        //             "cancelBubble": false
-        //         }
-        //         )
-        //     } else {
-        //         this.isPaused = 1;
-        //     }
-        // }, 10);
-
-        // document.addEventListener('focus', (event)=> { this.logEvent(event); }, true);
-        // document.addEventListener('focusin', (event)=> { this.logEvent(event); }, true);
-        // document.addEventListener('focusout', (event)=> { this.logEvent(event); }, true);
-        // document.addEventListener('blur', (event)=> { this.logEvent(event);}, true);
         // document.addEventListener('keypress', (event)=> { this.logEvent(event); }, true);
         // document.addEventListener('keydown', (event)=> {
         //     this.logEvent(event);
@@ -126,49 +42,15 @@ class EventRecord {
         // document.addEventListener('touchend', (event)=> { this.logEvent(event); }, true);
         // document.addEventListener('touchmove', (event)=> { this.logEvent(event); }, true);
         // document.addEventListener('touchcancel', (event)=> { this.logEvent(event); }, true);
-        // document.addEventListener('scroll', (event)=> { this.logEvent(event); }, true);
 
     }
 
     // eslint-disable-next-line @typescript-eslint/ban-types
     progressCall: Function;
 
-
-    _getSelectionText = () => {
-        let text = '';
-        const activeEl = document.activeElement;
-        const activeElTagName = activeEl ? activeEl.tagName.toLowerCase() : null;
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        if ((activeElTagName == 'textarea') || (activeElTagName == 'input' && /^(?:text|search|password|tel|url)$/i.test(activeEl.type)) && (typeof activeEl.selectionStart == 'number')
-        ) {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            text = activeEl.value.slice(activeEl.selectionStart, activeEl.selectionEnd);
-        } else if (window.getSelection) {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            text = window.getSelection().toString();
-        }
-        return text;
-    };
-
-    // isChineseCharacter = (temp: any) => {
-    //     const re = /[^\u4e00-\u9fa5]/;
-    //     if (re.test(temp)) {
-    //         return false;
-    //     }
-    //     return true;
-    // }
-
-    /*	Function: logEvent
-            This function will parse the
-
-    */
     logEvent = (event: any) => {
 
-        function isChineseCharacter(inputValueElement: any) {
+        const isChineseCharacter = (inputValueElement: any) => {
             const re = /[^\u4e00-\u9fa5]/;
             if (re.test(inputValueElement)) {
                 return false;
@@ -181,12 +63,6 @@ class EventRecord {
 
             const userEvent = {'selector': this.getSelector(event.target)} as any;
 
-            if (event.type === 'scroll') {
-                userEvent.type = 'scroll';
-                userEvent.scrollTop = $(event.target).scrollTop();
-                userEvent.scrollLeft = $(event.target).scrollLeft();
-                userEvent.timeStamp = event.timeStamp;
-            }
             if (event.type === 'keypress' || event.type === 'keyup') {
                 userEvent.value = event.target.value;
             } else {
@@ -239,7 +115,7 @@ class EventRecord {
                 // 获得当前输入法缓冲区的长度
                 userEvent.IMEBuffer_length = event.target.value.replace(/[^a-zA-Z]/g, '').length;
                 // 获取当前中文输入的长度
-                userEvent.ChineseLength = event.target.value.length - userEvent.IMEBuffer_length;
+                userEvent.ChineseLength = event.target.value.match(/[\u4e00-\u9fff]/g)?event.target.value.match(/[\u4e00-\u9fff]/g).length:0;
                 // 总长度
                 userEvent.textLength = event.target.value.length;
                 // 获取中文文本
@@ -261,7 +137,7 @@ class EventRecord {
                     } else {
                         if (inputValue !== this.currentInputValue) {
                             userEvent.value = inputValue;
-                            if (isChineseCharacter(inputValue[inputValue.length - 1])|| isChineseCharacter(userEvent.data[userEvent.data.length - 1]) ) {
+                            if (isChineseCharacter(inputValue[inputValue.length - 1]) || isChineseCharacter(userEvent.data[userEvent.data.length - 1])) {
                                 userEvent.keyValue = 'Space';
                             } else {
                                 if (userEvent.data) {
@@ -282,6 +158,7 @@ class EventRecord {
                     }
                 }
             }
+
 
             // Subtract the start time delay from the timestamp so we don't include the dead time (i.e., time between
             // page load and recording started) in our playback JSON log.
@@ -319,7 +196,7 @@ class EventRecord {
                     this.userEventLog.push(simplifiedUserEvent as never);
 
                     if (this.progressCall) {
-                        this.progressCall(simplifiedUserEvent);
+                        this.progressCall(simplifiedUserEvent as never);
                     }
 
                     // console.debug('Logged ' + userEvent.type + ' event.');
@@ -330,14 +207,6 @@ class EventRecord {
 
         }
     };
-
-    getUserEventLog = () => {
-        return this.userEventLog;
-    }
-
-    getUserViewModelLog = () => {
-        return this.userViewModelLog;
-    }
 
     getSelector = (el: any, names?: any) => {
         if (el === document || el === document.documentElement) return 'document';
@@ -383,34 +252,11 @@ class EventRecord {
         console.debug('Stop recording.');
 
         (window as any).recordInProgress = false;
-        // index.setState(JSON.parse(JSON.stringify(this.userEventLog)));
+
         const playbackScript = {
             'window': {'width': window.innerWidth, 'height': window.innerHeight},
             'event_log': this.userEventLog
         };
-        console.log(this.userEventLog)
-        ElMessageBox.confirm("是否生成CSV?", "提示", {
-            confirmButtonText: "确定",
-            cancelButtonText: "取消",
-            type: "warning"
-        })
-            .then(() => {
-                // 将数据转换为CSV格式
-                const csv = Papa.unparse(this.userEventLog);
-                const csvData = new Blob([csv], {type: "text/csv;charset=utf-8;"});
-                const csvURL = window.URL.createObjectURL(csvData);
-                const tempLink = document.createElement("a");
-                tempLink.href = csvURL;
-                tempLink.setAttribute("download", "writingData.csv");
-                document.body.appendChild(tempLink);
-                tempLink.click();
-                document.body.removeChild(tempLink);
-            })
-            .catch(() => {
-                // 取消
-            });
-
-
         return playbackScript;
     }
 

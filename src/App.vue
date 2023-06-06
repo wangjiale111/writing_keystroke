@@ -1,24 +1,16 @@
 <template>
     <div class="record">
         <div class="writing">
-            <div class="title">
-                <span>题目：xxxxxxxxxxxxxxxxx</span>
-            </div>
-            <div class="header">
-                <div>时间:{{ timeFormat }}</div>
-                <div style="margin-left: 80px">字数:{{ wordNum }}</div>
-            </div>
             <el-input
                     type="textarea"
                     :rows="10"
                     v-model="value"
-                    :disabled="disable"
                     @input="handleInput"
                     @keydown="handleKeyDown($event)"
             ></el-input>
             <div class="button">
-                <el-button type="primary" @click="confirmStartWriting" :disabled="disable2">开始写作</el-button>
-                <el-button type="danger" @click="confirmEndWriting" style="margin-left: 80px;">结束写作</el-button>
+                <el-button type="primary" @click="toStart" >开始</el-button>
+                <el-button type="danger" @click="toStop" >结束</el-button>
             </div>
         </div>
     </div>
@@ -27,8 +19,7 @@
 <script lang="ts">
 import { Options } from 'vue-class-component';
 import { Vue } from "vue-class-component";
-import { DomEventRecord } from "@/record";
-import  {ElMessageBox, Message } from 'element-plus';
+import { DomEventRecord } from "@/EventRecord";
 
 let recordData: any;
 
@@ -38,15 +29,6 @@ export default class WritingRecord extends Vue {
 
     domRecord: any;
     value = '';
-    replayData: any[] = [];
-    // 设置时间
-    timeFormat =  '20分00秒';
-    flag = false;
-    wordNum = 0;
-    disable = true;
-    // 设置时间,与timeFormat同步
-    time = 1200;
-    disable2 = false;
     writingData: any[] = [];
 
     /**
@@ -54,64 +36,11 @@ export default class WritingRecord extends Vue {
      */
     toStart() {
         console.log("record开始")
-        this.disable = false;
-        this.disable2 = true;
-        // 计时器计算时间
-        this.flag = false;
-        this.value = '';
-        const timer = setInterval(() => {
-            if (this.flag || this.time <= 0) {
-                clearInterval(timer);
-                if (this.time <= 0) {
-                    this.time = 0;
-                    ElMessageBox.alert("写作时间已到！", "提示", {
-                        confirmButtonText: "确定",
-                        type: "warning",
-                        callback: () => {
-                            this.toStop();
-                        }
-                    });
-                }
-            } else {
-                this.time--;
-                const min = Math.floor(this.time / 60);
-                const sec = this.time % 60;
-                this.timeFormat = `${min}分${sec}秒`;
-            }
-        }, 1000);
-
         this.domRecord = new DomEventRecord();
         this.domRecord.startRecord((log: any) => {
+           console.log(log);
             this.writingData.push(log);
         });
-    }
-
-    confirmStartWriting() {
-        ElMessageBox.confirm("是否开始写作?", "提示", {
-            confirmButtonText: "开始",
-            cancelButtonText: "取消",
-            type: "warning"
-        })
-            .then(() => {
-                this.toStart();
-            })
-            .catch(() => {
-                // 取消开始写作
-            });
-    }
-
-    confirmEndWriting() {
-        ElMessageBox.confirm("是否结束写作?", "提示", {
-            confirmButtonText: "结束",
-            cancelButtonText: "取消",
-            type: "warning"
-        })
-            .then(() => {
-                this.toStop();
-            })
-            .catch(() => {
-                // 取消结束写作
-            });
     }
 
     /**
@@ -119,11 +48,10 @@ export default class WritingRecord extends Vue {
      */
     toStop() {
         console.log("点击提交，结束录制")
-        this.disable = true;
-        this.flag = true;
-        recordData = this.domRecord.stopRecord((log: any) => {
+        this.domRecord.stopRecord((log: any) => {
             console.log(log);
         });
+      console.log(this.writingData)
     }
 
     /**
