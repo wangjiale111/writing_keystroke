@@ -1,25 +1,51 @@
-import $ from 'jquery';
+import $ from "jquery";
+import {ElMessageBox} from "element-plus";
+import Papa from "papaparse";
 
-export default class EventRecord {
+export class DomEventRecord {
+
+    record!: EventRecord;
+
+
+    constructor() {
+        (window as any).playbackInProgress = false;
+        (window as any).recordInProgress = false;
+    }
+
+    /**
+     *
+     * @param progressCall 实时录制的回调函数，会把EventLog返回，
+     */
+    startRecord(progressCall:any) {
+        this.record = new EventRecord(progressCall);
+        this.record.start();
+    }
+
+    /**
+     * 停止录制并返回录制数据
+     * @returns 返回所有EventLog 数组
+     */
+    stopRecord(p: (log: any) => void) {
+        return this.record.stop();
+    }
+}
+
+class EventRecord {
 
     userEventLog = [];
-    index = 1;
-    count = 1;
-    interval = 10; // 时间间隔为 10 毫秒
 
     startTimeDelay = 0;
-    isPaused = 1;
     currentInputValue: string;
     keyCode: any;
     textIndex = 1;
 
     constructor(progressCall: any) {
-        // this.startTimeDelay = new Date().getTime();
         this.progressCall = progressCall;
         this.currentInputValue = '';
 
         let lastEventTimestamp = 0; // 记录上一个事件的时间戳
 
+        // 结合keydown和input事件，实现对input输入的内容和部分特殊按键的监听
         document.addEventListener('keydown', (event) => {
             this.keyCode = event.key; // 记录最近按下的键值
             // console.log("keydown "+this.keyCode);
@@ -33,6 +59,25 @@ export default class EventRecord {
             }
         }, true);
 
+        // document.addEventListener('click', (event) => { this.logEvent(event); }, true);
+        // document.addEventListener('mousedown', (event) => { this.logEvent(event); }, true);
+        // document.addEventListener('mousemove', (event) => { this.logEvent(event); }, true);
+        // document.addEventListener('mouseup', (event) => {
+        //
+        //     this.logEvent(event);
+        //
+        //     // if the user has selected text, then we want to record an extra 'contains' event. on playback, this is used
+        //     // to verify that the selected text is contained within the target element
+        //     const selectedText = this._getSelectionText();
+        //     if (selectedText.length > 1) {
+        //         this.logEvent({ 'target':document.activeElement, 'type':'contains', 'text':selectedText, 'timeStamp':event.timeStamp });
+        //     }
+        // }, true);
+        // document.addEventListener('mouseover', (event) => { this.logEvent(event); }, true);
+        // document.addEventListener('focus', (event)=> { this.logEvent(event); }, true);
+        // document.addEventListener('focusin', (event)=> { this.logEvent(event); }, true);
+        // document.addEventListener('focusout', (event)=> { this.logEvent(event); }, true);
+        // document.addEventListener('blur', (event)=> { this.logEvent(event);}, true);
         // document.addEventListener('keypress', (event)=> { this.logEvent(event); }, true);
         // document.addEventListener('keydown', (event)=> {
         //     this.logEvent(event);
@@ -42,20 +87,41 @@ export default class EventRecord {
         // document.addEventListener('touchend', (event)=> { this.logEvent(event); }, true);
         // document.addEventListener('touchmove', (event)=> { this.logEvent(event); }, true);
         // document.addEventListener('touchcancel', (event)=> { this.logEvent(event); }, true);
+        // document.addEventListener('scroll', (event)=> { this.logEvent(event); }, true);
 
     }
 
     // eslint-disable-next-line @typescript-eslint/ban-types
     progressCall: Function;
 
+
+    _getSelectionText = () => {
+        let text = '';
+        const activeEl = document.activeElement;
+        const activeElTagName = activeEl ? activeEl.tagName.toLowerCase() : null;
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        if ((activeElTagName == 'textarea') || (activeElTagName == 'input' && /^(?:text|search|password|tel|url)$/i.test(activeEl.type)) && (typeof activeEl.selectionStart == 'number')
+        ) {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            text = activeEl.value.slice(activeEl.selectionStart, activeEl.selectionEnd);
+        } else if (window.getSelection) {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            text = window.getSelection().toString();
+        }
+        return text;
+    };
+
+
     logEvent = (event: any) => {
 
-        const isChineseCharacter = (inputValueElement: any) => {
+        function isChineseCharacter(inputValueElement: any) {
             const re = /[^\u4e00-\u9fa5]/;
-            if (re.test(inputValueElement)) {
-                return false;
-            }
-            return true;
+            return !re.test(inputValueElement);
+
         }
 
         // Only record the event if recording is in progress
@@ -63,6 +129,12 @@ export default class EventRecord {
 
             const userEvent = {'selector': this.getSelector(event.target)} as any;
 
+            if (event.type === 'scroll') {
+                userEvent.type = 'scroll';
+                userEvent.scrollTop = $(event.target).scrollTop();
+                userEvent.scrollLeft = $(event.target).scrollLeft();
+                userEvent.timeStamp = event.timeStamp;
+            }
             if (event.type === 'keypress' || event.type === 'keyup') {
                 userEvent.value = event.target.value;
             } else {
@@ -101,6 +173,7 @@ export default class EventRecord {
             }
 
 
+            // 监听input事件，记录用户输入的内容，根据想要的内容进行处理
             if (event.type === 'input') {
                 userEvent.No = this.textIndex++;
 
@@ -115,7 +188,7 @@ export default class EventRecord {
                 // 获得当前输入法缓冲区的长度
                 userEvent.IMEBuffer_length = event.target.value.replace(/[^a-zA-Z]/g, '').length;
                 // 获取当前中文输入的长度
-                userEvent.ChineseLength = event.target.value.match(/[\u4e00-\u9fff]/g)?event.target.value.match(/[\u4e00-\u9fff]/g).length:0;
+                userEvent.ChineseLength = event.target.value.length - userEvent.IMEBuffer_length;
                 // 总长度
                 userEvent.textLength = event.target.value.length;
                 // 获取中文文本
@@ -137,7 +210,7 @@ export default class EventRecord {
                     } else {
                         if (inputValue !== this.currentInputValue) {
                             userEvent.value = inputValue;
-                            if (isChineseCharacter(inputValue[inputValue.length - 1]) || isChineseCharacter(userEvent.data[userEvent.data.length - 1])) {
+                            if (isChineseCharacter(inputValue[inputValue.length - 1])|| isChineseCharacter(userEvent.data[userEvent.data.length - 1]) ) {
                                 userEvent.keyValue = 'Space';
                             } else {
                                 if (userEvent.data) {
@@ -159,47 +232,64 @@ export default class EventRecord {
                 }
             }
 
-
             // Subtract the start time delay from the timestamp so we don't include the dead time (i.e., time between
             // page load and recording started) in our playback JSON log.
             // userEvent.timeStamp = new Date().getTime() - this.startTimeDelay;
             userEvent.timeStamp = Math.floor((new Date().getTime() - this.startTimeDelay) / 10) * 10; // 更改为10毫秒精度
+            // userEvent.selector有很多数据，选取需要的数据进行重命名和保存
             if (userEvent.selector !== null) {
-                if ((window as any).playbackInProgress == false) {
-                    const {
-                        No,
-                        value,
-                        ChineseText,
-                        data,
-                        ChineseLength,
-                        IMEBuffer_length,
-                        textLength,
-                        keyValue,
-                        inputType,
-                        timeStamp
-                    } = userEvent;
-                    const simplifiedUserEvent = {
-                        index: No,
-                        classKey: 'writing',
-                        text: value,
-                        ChineseText,
-                        IMEBuffer: data,
-                        ChineseLength,
-                        IMEBuffer_length,
-                        textLength,
-                        keyValue,
-                        keyAction: inputType,
-                        timeStamp,
-                    };
+                // 主要监听的是input事件，当打开其他事件监听的时候，可以log查看内容
+                if (event.type === 'input') {
+                    if ((window as any).playbackInProgress == false) {
+                        const {
+                            No,
+                            value,
+                            ChineseText,
+                            data,
+                            ChineseLength,
+                            IMEBuffer_length,
+                            textLength,
+                            keyValue,
+                            inputType,
+                            timeStamp
+                        } = userEvent;
+                        const simplifiedUserEvent = {
+                            index: No,
+                            classKey: 'writing',
+                            text: value,
+                            ChineseText,
+                            IMEBuffer: data,
+                            ChineseLength,
+                            IMEBuffer_length,
+                            textLength,
+                            keyValue,
+                            keyAction: inputType,
+                            timeStamp,
+                        };
 
-                    // console.log(simplifiedUserEvent);
-                    this.userEventLog.push(simplifiedUserEvent as never);
+                        // console.log(simplifiedUserEvent);
+                        this.userEventLog.push(simplifiedUserEvent as never);
 
-                    if (this.progressCall) {
-                        this.progressCall(simplifiedUserEvent as never);
+                        if (this.progressCall) {
+                            this.progressCall(simplifiedUserEvent);
+                        }
+
+                        // console.debug('Logged ' + userEvent.type + ' event.');
                     }
+                } else{
+                    if ((window as any).playbackInProgress == false) {
 
-                    // console.debug('Logged ' + userEvent.type + ' event.');
+                        // this.userEventLog.push(userEvent as never);
+
+                        // input之外的事件，可以进行打印查看内容，注意要注释input事件的监听
+                        // console.log(userEvent)
+
+                        if (this.progressCall) {
+                            this.progressCall(userEvent);
+                        }
+
+                        // console.debug('Logged ' + userEvent.type + ' event.');
+                    }
                 }
             } else {
                 console.warn('Null selector');
@@ -252,11 +342,35 @@ export default class EventRecord {
         console.debug('Stop recording.');
 
         (window as any).recordInProgress = false;
-
+        // index.setState(JSON.parse(JSON.stringify(this.userEventLog)));
         const playbackScript = {
             'window': {'width': window.innerWidth, 'height': window.innerHeight},
             'event_log': this.userEventLog
         };
+        console.log(this.userEventLog)
+
+        ElMessageBox.confirm("是否生成CSV?", "提示", {
+            confirmButtonText: "确定",
+            cancelButtonText: "取消",
+            type: "warning"
+        })
+            .then(() => {
+                // 将数据转换为CSV格式
+                const csv = Papa.unparse(this.userEventLog);
+                const csvData = new Blob([csv], {type: "text/csv;charset=utf-8;"});
+                const csvURL = window.URL.createObjectURL(csvData);
+                const tempLink = document.createElement("a");
+                tempLink.href = csvURL;
+                tempLink.setAttribute("download", "writingData.csv");
+                document.body.appendChild(tempLink);
+                tempLink.click();
+                document.body.removeChild(tempLink);
+            })
+            .catch(() => {
+                // 取消
+            });
+
+
         return playbackScript;
     }
 

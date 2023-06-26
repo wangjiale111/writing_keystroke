@@ -5,12 +5,13 @@
                     type="textarea"
                     :rows="10"
                     v-model="value"
+                    :disabled="disable"
                     @input="handleInput"
                     @keydown="handleKeyDown($event)"
             ></el-input>
             <div class="button">
-                <el-button type="primary" @click="toStart" >开始</el-button>
-                <el-button type="danger" @click="toStop" >结束</el-button>
+                <el-button type="primary" @click="confirmStartWriting" :disabled="disableStart">开始</el-button>
+                <el-button type="danger" @click="confirmEndWriting" style="margin-left: 80px;">结束</el-button>
             </div>
         </div>
     </div>
@@ -19,7 +20,8 @@
 <script lang="ts">
 import { Options } from 'vue-class-component';
 import { Vue } from "vue-class-component";
-import { DomEventRecord } from "@/EventRecord";
+import { DomEventRecord } from "@/record";
+import  {ElMessageBox} from 'element-plus';
 
 let recordData: any;
 
@@ -29,29 +31,64 @@ export default class WritingRecord extends Vue {
 
     domRecord: any;
     value = '';
+
+    disable = true;
+    disableStart = false;
     writingData: any[] = [];
 
     /**
-     * toStart  开始录制 1.计时器计算时间  2.监听输入框的值 3.调用recordUserViewModel方法
+     * toStart  开始录制,调用startRecord方法,录制的每一条数据都在this.writingData中
      */
     toStart() {
         console.log("record开始")
+        this.disable = false;
+        this.disableStart = true;
+        this.value = '';
         this.domRecord = new DomEventRecord();
         this.domRecord.startRecord((log: any) => {
-           console.log(log);
+          console.log(log)
             this.writingData.push(log);
         });
     }
 
+    confirmStartWriting() {
+        ElMessageBox.confirm("是否开始?", "提示", {
+            confirmButtonText: "开始",
+            cancelButtonText: "取消",
+            type: "warning"
+        })
+            .then(() => {
+                this.toStart();
+            })
+            .catch(() => {
+                // 取消开始写作
+            });
+    }
+
+    confirmEndWriting() {
+        ElMessageBox.confirm("是否结束?", "提示", {
+            confirmButtonText: "结束",
+            cancelButtonText: "取消",
+            type: "warning"
+        })
+            .then(() => {
+                this.toStop();
+            })
+            .catch(() => {
+                // 取消结束写作
+            });
+    }
+
     /**
-     * toStop  结束录制 1.调用stopRecord方法 2.将数据存入recordData
+     * toStop  结束录制,调用stopRecord方法
      */
     toStop() {
         console.log("点击提交，结束录制")
-        this.domRecord.stopRecord((log: any) => {
+        this.disable = true;
+        this.disableStart = false;
+        recordData = this.domRecord.stopRecord((log: any) => {
             console.log(log);
         });
-      console.log(this.writingData)
     }
 
     /**
@@ -77,24 +114,6 @@ export default class WritingRecord extends Vue {
 </script>
 
 <style scoped>
-.header {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    background-color: #f0f0f0; /* 添加背景色 */
-    padding: 10px 20px; /* 添加内边距 */
-    font-family: Arial, sans-serif; /* 修改字体 */
-    font-size: 16px; /* 修改字体大小 */
-    color: #333; /* 修改字体颜色 */
-    width: 800px;
-}
-
-.title{
-    margin-bottom: 30px;
-    font-size: 20px;
-}
-
 .button {
     display: flex;
     flex-direction: row;
