@@ -120,8 +120,10 @@ class EventRecord {
 
         function isChineseCharacter(inputValueElement: any) {
             const re = /[^\u4e00-\u9fa5]/;
-            return !re.test(inputValueElement);
-
+            if (re.test(inputValueElement)) {
+                return false;
+            }
+            return true;
         }
 
         // Only record the event if recording is in progress
